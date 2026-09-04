@@ -159,8 +159,31 @@ def initialize_weights(in_dim, out_dim, scheme='he'):
     
     return W, b
 
-# Step 6 - make_loss (not yet solved)
-# TODO: implement
+# Step 6 - make_loss
+import numpy as np
+
+def make_loss(kind='cross_entropy'):
+    def loss_fn(logits, labels):
+        logits = np.asarray(logits)
+        labels = np.asarray(labels)
+
+        batch, C = logits.shape
+
+        max_logits = np.max(logits, axis=1, keepdims=True)
+        shifted = logits - max_logits
+        sum_exp = np.sum(np.exp(shifted), axis=1, keepdims=True)
+        log_probs = shifted - np.log(sum_exp)   
+
+        correct_log_probs = log_probs[np.arange(batch), labels]
+        loss = -np.mean(correct_log_probs)
+        probs = np.exp(log_probs)
+        grad = probs.copy()
+        grad[np.arange(batch), labels] -= 1
+        grad /= batch
+
+        return float(loss), grad
+
+    return loss_fn
 
 # Step 7 - make_sequential (not yet solved)
 # TODO: implement

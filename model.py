@@ -42,8 +42,48 @@ def gradient_check(analytic_grad, numeric_grad, tol=1e-5):
     
     return float(np.max(diff / denom))
 
-# Step 3 - make_dense (not yet solved)
-# TODO: implement
+# Step 3 - make_dense
+import numpy as np
+
+def make_dense(in_dim, out_dim, weight_init_fn):
+    W, b = weight_init_fn(in_dim, out_dim)
+
+    layer = {
+      'params' : {
+        'W' : W,
+        'b' : b 
+      },
+      'forward' : lambda : None,
+      'backward' : lambda : None
+    }
+
+    def forward(x, cache=None):
+      W, b = layer['params']['W'], layer['params']['b']
+
+      y = x @ W + b 
+      cache = (x.copy(), W.copy(), b.copy())
+
+      return y, cache
+
+
+    def backward(dout, cache):
+      x, W, b = cache
+
+      dx = dout @ W.T
+      dW = x.T @ dout
+      db = dout.sum(axis=0)
+
+      grads = {
+        'W' : dW,
+        'b' : db
+      }
+
+      return dx, grads
+
+    layer['forward'] = forward
+    layer['backward'] = backward
+
+    return layer
 
 # Step 4 - make_activation (not yet solved)
 # TODO: implement

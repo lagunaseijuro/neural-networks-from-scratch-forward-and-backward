@@ -362,7 +362,6 @@ def design_network(input_dim, num_classes, seed=0):
     """Design and train a net that solves a nonlinear classification task."""
     np.random.seed(seed)
     
-    # 1. Генерируем нелинейные данные
     def generate_circles(n_samples, input_dim, noise=0.15, seed=0):
       np.random.seed(seed)
       n_half = n_samples // 2

@@ -263,8 +263,35 @@ def forward_backward(model, loss_fn, x, y):
 
     return loss, param_grads
 
-# Step 9 - make_optimizer (not yet solved)
-# TODO: implement
+# Step 9 - make_optimizer
+def make_optimizer(params, lr=1e-2, kind='sgd'):
+    """Build an optimizer that updates params in place.
+
+    Inputs:
+      params: arrays, possibly nested in lists/dicts (or dict of arrays) to optimize
+      lr: float learning rate
+      kind: str algorithm name (e.g. 'sgd')
+
+    Returns:
+      dict with key 'step'. step(grads) applies one in-place update
+      using grads structured like params. Parameter shapes must stay
+      unchanged. Repeated steps must reduce a simple convex objective
+      within a modest fixed budget and keep values finite.
+    """
+    def step(grads):
+      def update(p, g):
+        if isinstance(p, dict):
+          for key in p.keys():
+            update(p[key], g[key])
+        elif isinstance(p, list):
+          for idx in range(len(p)):
+            update(p[idx], g[idx])
+        else:
+          p -= lr * g
+      
+      update(params, grads)
+        
+    return {'step' : step}
 
 # Step 10 - train_step (not yet solved)
 # TODO: implement

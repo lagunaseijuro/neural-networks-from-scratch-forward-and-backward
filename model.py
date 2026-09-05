@@ -149,14 +149,10 @@ def initialize_weights(in_dim, out_dim, scheme='he'):
          scale stable with depth (fan-in dependent)
       b: np.ndarray shape (out_dim,), near zero
     """
-    # TODO: your approach here
-    if scheme == 'he':
-        std = np.sqrt(2 / in_dim)
-        W = np.random.randn(in_dim, out_dim) * std
-        b = np.zeros(out_dim)
-    else:
-        pass
-    
+    std = np.sqrt(2 / in_dim)
+    W = np.random.randn(in_dim, out_dim) * std
+    b = np.zeros(out_dim)
+
     return W, b
 
 # Step 6 - make_loss
@@ -361,8 +357,75 @@ def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0):
 
     return history
 
-# Step 12 - design_network (not yet solved)
-# TODO: implement
+# Step 12 - design_network
+def design_network(input_dim, num_classes, seed=0):
+    """Design and train a net that solves a nonlinear classification task."""
+    np.random.seed(seed)
+    
+    # 1. Генерируем нелинейные данные
+    def generate_circles(n_samples, input_dim, noise=0.15, seed=0):
+      np.random.seed(seed)
+      n_half = n_samples // 2
+      remainder = n_samples % 2
+
+      X = np.zeros((n_samples, input_dim))
+
+      r1, r2 = 10, 100
+      theta1 = np.random.uniform(0, 2 * np.pi, n_half)
+      theta2 = np.random.uniform(0, 2 * np.pi, n_half + remainder)
+
+      x1, y1 = r1 * np.cos(theta1), r1 * np.sin(theta1)
+      x2, y2 = r2 * np.cos(theta2), r2 * np.sin(theta2)
+
+      first_col, second_col = np.hstack((x1, x2)), np.hstack((y1, y2))
+
+      X[:, 0] = first_col
+      X[:, 1] = second_col
+
+      y = np.hstack((np.zeros(n_half), np.ones(n_half + remainder))).astype(int)
+
+      X = X + noise * np.random.randn(n_samples, input_dim)
+
+      indices = np.random.permutation(np.arange(n_samples))
+      X = X[indices]
+      y = y[indices]
+
+      return X, y
+    
+    N = 500
+    X, y = generate_circles(N, input_dim, noise=0.15, seed=seed)
+
+    from sklearn.linear_model import LogisticRegression
+    lr = LogisticRegression(max_iter=1000, random_state=seed)
+    lr.fit(X, y)
+    linear_acc = lr.score(X, y)
+    assert linear_acc < 0.82, f"Linear accuracy {linear_acc} too high!"
+    
+    hidden_dim = 10
+    model = make_sequential([
+        make_dense(input_dim, hidden_dim, initialize_weights),
+        make_activation('relu'),
+        make_dense(hidden_dim, hidden_dim, initialize_weights),
+        make_activation('relu'),
+        make_dense(hidden_dim, num_classes, initialize_weights)
+    ])
+    
+    optimizer = make_optimizer(model['params'], lr=0.01)
+    loss_fn = make_loss('cross_entropy')
+    
+    history = train(model, loss_fn, optimizer, X, y, 
+                    epochs=300, batch_size=32, seed=seed)
+    
+    logits, _ = model['forward'](X)
+    predictions = np.argmax(logits, axis=1)
+    accuracy = np.mean(predictions == y)
+    assert accuracy >= 0.90, f"Accuracy {accuracy} < 0.90!"
+    
+    return model, {
+        'accuracy': float(accuracy),
+        'x': X,
+        'y': y
+    }
 
 # Step 13 - improve_generalization (not yet solved)
 # TODO: implement

@@ -323,7 +323,7 @@ def train_step(model, loss_fn, optimizer, x_batch, y_batch):
 # Step 11 - train
 import numpy as np
 
-def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0):
+def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0, x_val=None, y_val=None, patience=None):
     """Run a deterministic minibatch training loop.
 
     Inputs:
@@ -345,6 +345,9 @@ def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0):
     np.random.seed(seed)
     history = []
 
+    best_val_accuracy = -1.0
+    patience_counter = 0
+
     for epoch in range(1, epochs + 1):
       indices = np.random.permutation(np.arange(len(x)))
       X_shuffled = x[indices]
@@ -359,6 +362,26 @@ def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0):
         total_loss += train_step(model, loss_fn, optimizer, X_batch, y_batch)
 
       history.append(total_loss)
+
+      if x_val is not None and y_val is not None:
+        val_accuracy = compute_accuracy(model, x_val, y_val)
+
+        if val_accuracy > best_val_accuracy:
+          best_val_accuracy = val_accuracy
+          patience_counter += 1
+        else:
+          patience_counter += 1
+
+          if patience is not None and patience_counter >= patience:
+            break
+
+
+
+
+      
+      
+
+
 
     return history
 
@@ -432,36 +455,6 @@ def design_network(input_dim, num_classes, seed=0):
     }
 
 # Step 13 - improve_generalization
-def make_optimizer(params, lr=1e-2, kind='sgd', weight_decay=0.0):
-    """Build an optimizer that updates params in place.
-
-    Inputs:
-      params: arrays, possibly nested in lists/dicts (or dict of arrays) to optimize
-      lr: float learning rate
-      kind: str algorithm name (e.g. 'sgd')
-
-    Returns:
-      dict with key 'step'. step(grads) applies one in-place update
-      using grads structured like params. Parameter shapes must stay
-      unchanged. Repeated steps must reduce a simple convex objective
-      within a modest fixed budget and keep values finite.
-    """
-    def step(grads):
-      def update(p, g):
-        if isinstance(p, dict):
-          for key in p.keys():
-            update(p[key], g[key])
-        elif isinstance(p, list):
-          for idx in range(len(p)):
-            update(p[idx], g[idx])
-        else:
-          p -= lr * (g + weight_decay * p)
-      
-      update(params, grads)
-        
-    return {'step' : step}
-
-
 def improve_generalization(baseline_model_fn, x_train, y_train, x_val, y_val, seed=0):
     """Improve held-out accuracy over an unregularized baseline.
 

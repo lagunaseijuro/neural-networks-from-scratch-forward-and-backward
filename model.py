@@ -368,7 +368,7 @@ def train(model, loss_fn, optimizer, x, y, epochs, batch_size, seed=0, x_val=Non
 
         if val_accuracy > best_val_accuracy:
           best_val_accuracy = val_accuracy
-          patience_counter += 1
+          patience_counter = 0
         else:
           patience_counter += 1
 

@@ -501,7 +501,7 @@ def improve_generalization(baseline_model_fn, x_train, y_train, x_val, y_val, se
     loss_fn = make_loss()
     optimizer = make_optimizer(improved_model['params'], lr=0.01, weight_decay=0.001)
 
-    train(improved_model, loss_fn, optimizer, x_train, y_train, epochs=200, batch_size=64, seed=seed)
+    train(improved_model, loss_fn, optimizer, x_train, y_train, epochs=200, batch_size=64, seed=seed, x_val=x_val, y_val=y_val, patience=20)
 
     impr_logits, _ = improved_model['forward'](x_val)
     predictions = np.argmax(impr_logits, axis=1)

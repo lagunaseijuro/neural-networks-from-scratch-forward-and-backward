@@ -260,7 +260,7 @@ def forward_backward(model, loss_fn, x, y):
     return loss, param_grads
 
 # Step 9 - make_optimizer
-def make_optimizer(params, lr=1e-2, kind='sgd'):
+def make_optimizer(params, lr=1e-2, kind='sgd', weight_decay=0.0):
     """Build an optimizer that updates params in place.
 
     Inputs:
@@ -283,7 +283,7 @@ def make_optimizer(params, lr=1e-2, kind='sgd'):
           for idx in range(len(p)):
             update(p[idx], g[idx])
         else:
-          p -= lr * g
+          p -= lr * (g + weight_decay * p)
       
       update(params, grads)
         
@@ -426,6 +426,94 @@ def design_network(input_dim, num_classes, seed=0):
         'y': y
     }
 
-# Step 13 - improve_generalization (not yet solved)
-# TODO: implement
+# Step 13 - improve_generalization
+def make_optimizer(params, lr=1e-2, kind='sgd', weight_decay=0.0):
+    """Build an optimizer that updates params in place.
+
+    Inputs:
+      params: arrays, possibly nested in lists/dicts (or dict of arrays) to optimize
+      lr: float learning rate
+      kind: str algorithm name (e.g. 'sgd')
+
+    Returns:
+      dict with key 'step'. step(grads) applies one in-place update
+      using grads structured like params. Parameter shapes must stay
+      unchanged. Repeated steps must reduce a simple convex objective
+      within a modest fixed budget and keep values finite.
+    """
+    def step(grads):
+      def update(p, g):
+        if isinstance(p, dict):
+          for key in p.keys():
+            update(p[key], g[key])
+        elif isinstance(p, list):
+          for idx in range(len(p)):
+            update(p[idx], g[idx])
+        else:
+          p -= lr * (g + weight_decay * p)
+      
+      update(params, grads)
+        
+    return {'step' : step}
+
+
+def improve_generalization(baseline_model_fn, x_train, y_train, x_val, y_val, seed=0):
+    """Improve held-out accuracy over an unregularized baseline.
+
+    Inputs:
+      baseline_model_fn: zero-arg callable -> fresh untrained sequential model
+        (dict with 'forward', 'backward', 'params') matching the data dims.
+      x_train, y_train: training features (N, D) and int labels (N,).
+      x_val, y_val: validation features (N_val, D) and int labels (N_val,).
+      seed: int for deterministic training.
+
+    Returns:
+      dict with keys:
+        'val_accuracy': float accuracy of the improved model on x_val/y_val
+        'baseline_val_accuracy': float val accuracy of plain unregularized SGD
+        'predictions': np.ndarray shape (N_val,) int preds from improved model
+        'model': the trained improved model
+
+    Required behavior:
+      val_accuracy > baseline_val_accuracy
+      predictions == argmax(model.forward(x_val), axis=1)
+      val_accuracy == mean(predictions == y_val)
+      predictions are non-constant (not a trivial single-class predictor)
+    """
+    # Baseline Model
+    np.random.seed(seed)
+
+    baseline_model = baseline_model_fn()
+
+    loss_fn = make_loss()
+    optimizer = make_optimizer(baseline_model['params'], lr=0.01)
+
+    train(baseline_model, loss_fn, optimizer, x_train, y_train, epochs=100, batch_size=32, seed=seed)
+
+    based_logits, _ = baseline_model['forward'](x_val)
+    based_preds = np.argmax(based_logits, axis=1)
+    correct = np.sum((based_preds == y_val))
+    baseline_val_accuracy = correct / len(x_val)
+
+    # Improved Model
+    np.random.seed(seed + 1)
+
+    improved_model = baseline_model_fn()
+
+    loss_fn = make_loss()
+    optimizer = make_optimizer(improved_model['params'], lr=0.01, weight_decay=0.001)
+
+    train(improved_model, loss_fn, optimizer, x_train, y_train, epochs=200, batch_size=64, seed=seed)
+
+    impr_logits, _ = improved_model['forward'](x_val)
+    predictions = np.argmax(impr_logits, axis=1)
+    correct = np.sum(predictions == y_val)
+    val_accuracy = correct / len(x_val)
+
+    return {
+      'val_accuracy' : float(val_accuracy),
+      'baseline_val_accuracy' : float(baseline_val_accuracy),
+      'predictions' : predictions,
+      'model' : improved_model
+    }
 

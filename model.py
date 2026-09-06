@@ -260,6 +260,11 @@ def forward_backward(model, loss_fn, x, y):
     return loss, param_grads
 
 # Step 9 - make_optimizer
+def compute_accuracy(model, X, y):
+  logits, _ = model['forward'](X)
+  return float(np.mean(np.argmax(logits, axis=1) == y))
+
+
 def make_optimizer(params, lr=1e-2, kind='sgd', weight_decay=0.0):
     """Build an optimizer that updates params in place.
 
